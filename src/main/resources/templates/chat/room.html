@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en" class="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="_csrf" th:content="${_csrf.token}" />
+    <meta name="_csrf_header" th:content="${_csrf.headerName}" />
+    <title>Chat - <span th:text="${product.title}"></span></title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- WebSocket libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        .chat-header {
+            background: white;
+            border-bottom: 1px solid #e5e7eb;
+            padding: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        .dark .chat-header {
+            background: #1f2937;
+            border-bottom-color: #374151;
+        }
+
+        .message-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1.5rem;
+            background: #f9fafb;
+        }
+
+        .dark .message-area {
+            background: #111827;
+        }
+
+        .message {
+            margin-bottom: 1rem;
+            display: flex;
+        }
+
+        .message-sent {
+            justify-content: flex-end;
+        }
+
+        .message-received {
+            justify-content: flex-start;
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 0.75rem 1rem;
+            border-radius: 1rem;
+            position: relative;
+            word-wrap: break-word;
+        }
+
+        .message-sent .message-content {
+            background: #3b82f6;
+            color: white;
+            border-bottom-right-radius: 0.25rem;
+        }
+
+        .message-received .message-content {
+            background: white;
+            color: #1f2937;
+            border-bottom-left-radius: 0.25rem;
+        }
+
+        .dark .message-received .message-content {
+            background: #374151;
+            color: #f3f4f6;
+        }
+
+        .message-time {
+            font-size: 0.75rem;
+            opacity: 0.7;
+            margin-top: 0.25rem;
+            display: block;
+        }
+
+        .message-input-container {
+            background: white;
+            border-top: 1px solid #e5e7eb;
+            padding: 1rem;
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .dark .message-input-container {
+            background: #1f2937;
+            border-top-color: #374151;
+        }
+
+        .message-input {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        .dark .message-input {
+            background: #374151;
+            border-color: #4b5563;
+            color: #f3f4f6;
+        }
+
+        .send-button {
+            padding: 0.75rem 1.5rem;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .send-button:hover {
+            background: #2563eb;
+        }
+
+        .send-button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+    </style>
+    <script>
+        // Dark mode support
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark')
+        } else {
+            document.documentElement.classList.remove('dark')
+        }
+    </script>
+</head>
+
+<body class="bg-gray-50 dark:bg-gray-900">
+    <div class="chat-container">
+        <!-- Chat Header -->
+        <div class="chat-header">
+            <a th:href="@{/chat}" class="text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                </svg>
+                Back
+            </a>
+
+            <div class="flex items-center gap-3 flex-1">
+                <!-- Product Image -->
+                <img th:if="${product.images != null && !product.images.isEmpty()}"
+                    th:src="${product.images[0].imageUrl.startsWith('http') ? product.images[0].imageUrl : '/images/' + product.images[0].imageUrl}"
+                    alt="Product" class="w-12 h-12 rounded-lg object-cover">
+
+                <div class="flex-1 min-w-0">
+                    <h3 class="font-semibold text-gray-900 dark:text-white truncate" th:text="${product.title}">Product
+                        Title</h3>
+                    <div class="flex items-center gap-2">
+                        <div
+                            class="w-5 h-5 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-xs overflow-hidden">
+                            <img th:if="${otherUser.avatarUrl != null}" th:src="${otherUser.avatarUrl}"
+                                class="w-full h-full object-cover">
+                            <span th:unless="${otherUser.avatarUrl != null}"
+                                th:text="${#strings.substring(otherUser.username, 0, 1).toUpperCase()}">U</span>
+                        </div>
+                        <span class="text-sm text-gray-600 dark:text-gray-400"
+                            th:text="${otherUser.username}">Username</span>
+                    </div>
+                </div>
+            </div>
+
+            <a th:href="@{/products/{id}(id=${product.id})}"
+                class="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition">
+                View Product
+            </a>
+        </div>
+
+        <!-- Messages Area -->
+        <div id="messageArea" class="message-area">
+            <div th:each="msg : ${messages}"
+                th:classappend="${msg.sender.id == currentUser.id} ? 'message-sent' : 'message-received'"
+                class="message">
+                <div class="message-content">
+                    <p th:text="${msg.content}">Message content</p>
+                    <span class="message-time" th:text="${#temporals.format(msg.timestamp, 'HH:mm')}">14:30</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Message Input -->
+        <div class="message-input-container">
+            <input type="text" id="messageInput" placeholder="Type a message..." class="message-input"
+                autocomplete="off">
+            <button id="sendButton" class="send-button">Send</button>
+        </div>
+    </div>
+
+    <!-- WebSocket Script -->
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+        const chatRoomId = /*[[${chatRoom.id}]]*/ 0;
+        const currentUserId = /*[[${currentUser.id}]]*/ 0;
+        const currentUserName = /*[[${currentUser.username}]]*/ '';
+        const currentUserAvatar = /*[[${currentUser.avatarUrl}]]*/ '';
+
+        let stompClient = null;
+        let reconnectAttempts = 0;
+        const MAX_RECONNECT_ATTEMPTS = 5;
+
+        // Connect to WebSocket
+        function connect() {
+            const socket = new SockJS('/ws');
+            stompClient = Stomp.over(socket);
+
+            // Disable debug logging
+            stompClient.debug = null;
+
+            stompClient.connect({}, function (frame) {
+                console.log('✅ Connected to WebSocket');
+                reconnectAttempts = 0;
+
+                // Subscribe to this chat room's messages
+                stompClient.subscribe('/topic/chatroom/' + chatRoomId, function (messageOutput) {
+                    const message = JSON.parse(messageOutput.body);
+                    showMessage(message);
+                });
+
+                // Subscribe to error messages
+                stompClient.subscribe('/topic/chatroom/' + chatRoomId + '/errors', function (errorOutput) {
+                    console.error('❌ Chat error:', errorOutput.body);
+                    alert('Error: ' + errorOutput.body);
+                });
+            }, function (error) {
+                console.error('❌ WebSocket connection error:', error);
+
+                // Retry connection with exponential backoff
+                if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+                    reconnectAttempts++;
+                    const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 10000);
+                    console.log(`🔄 Reconnecting in ${delay}ms (attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})...`);
+                    setTimeout(connect, delay);
+                } else {
+                    alert('Unable to connect to chat server. Please refresh the page.');
+                }
+            });
+        }
+
+        // Send message
+        function sendMessage() {
+            const messageInput = document.getElementById('messageInput');
+            const content = messageInput.value.trim();
+
+            if (content && stompClient && stompClient.connected) {
+                const message = {
+                    content: content,
+                    senderId: currentUserId
+                };
+
+                stompClient.send('/app/chat.send/' + chatRoomId, {}, JSON.stringify(message));
+                messageInput.value = '';
+            } else if (!stompClient || !stompClient.connected) {
+                alert('Not connected to chat server. Reconnecting...');
+                connect();
+            }
+        }
+
+        // Display incoming message
+        function showMessage(message) {
+            const messageArea = document.getElementById('messageArea');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message ' + (message.senderId === currentUserId ? 'message-sent' : 'message-received');
+
+            const time = new Date(message.timestamp).toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+            });
+
+            messageDiv.innerHTML = `
+                <div class="message-content">
+                    <p>${escapeHtml(message.content)}</p>
+                    <span class="message-time">${time}</span>
+                </div>
+            `;
+
+            messageArea.appendChild(messageDiv);
+            messageArea.scrollTop = messageArea.scrollHeight;
+        }
+
+        // Escape HTML to prevent XSS
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+
+        // Event listeners
+        document.getElementById('sendButton').addEventListener('click', sendMessage);
+        document.getElementById('messageInput').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // Auto-scroll to bottom on load
+        window.addEventListener('load', function () {
+            const messageArea = document.getElementById('messageArea');
+            messageArea.scrollTop = messageArea.scrollHeight;
+        });
+
+        // Connect on page load
+        connect();
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', function () {
+            if (stompClient && stompClient.connected) {
+                stompClient.disconnect();
+            }
+        });
+        /*]]>*/
+    </script>
+</body>
+
+</html>

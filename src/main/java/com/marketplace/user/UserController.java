@@ -1,6 +1,7 @@
 package com.marketplace.user;
 
 import com.marketplace.product.ProductRepository;
+import com.marketplace.chat.repository.ChatRoomRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -18,7 +19,7 @@ public class UserController {
     private final UserService userService;
     private final ProductRepository productRepository;
     private final com.marketplace.product.ProductLikeRepository productLikeRepository;
-    private final com.marketplace.repository.MessageRepository messageRepository;
+    private final ChatRoomRepository chatRoomRepository;
 
     @GetMapping
     @org.springframework.transaction.annotation.Transactional(readOnly = true)
@@ -41,29 +42,33 @@ public class UserController {
                 .collect(java.util.stream.Collectors.toList());
         model.addAttribute("likedProducts", likedProducts);
 
-        // Fetch conversations history
-        java.util.List<com.marketplace.model.ChatMessage> allMessages = messageRepository
-                .findBySenderIdOrReceiverIdOrderByTimestampDesc(
-                        user.getId(), user.getId());
+        // Fetch conversations history using new ChatRoom system
+        java.util.List<com.marketplace.chat.model.ChatRoom> chatRooms = chatRoomRepository.findByUserId(user.getId());
 
-        // Use a DTO or Map to store conversation with user info
-        java.util.List<java.util.Map<String, Object>> conversations = new java.util.ArrayList<>();
-        java.util.Set<Long> processedUsers = new java.util.HashSet<>();
-
-        for (com.marketplace.model.ChatMessage msg : allMessages) {
-            Long otherId = msg.getSenderId().equals(user.getId()) ? msg.getReceiverId() : msg.getSenderId();
-            if (otherId != null && !processedUsers.contains(otherId)) {
-                User other = userService.findById(otherId).orElse(null);
-                if (other != null) {
+        // Convert to conversation maps for template
+        java.util.List<java.util.Map<String, Object>> conversations = chatRooms.stream()
+                .map(room -> {
                     java.util.Map<String, Object> convMap = new java.util.HashMap<>();
-                    convMap.put("otherUser", other);
-                    convMap.put("lastMessage", msg);
-                    conversations.add(convMap);
-                    processedUsers.add(otherId);
-                }
-            }
-        }
+                    User otherUser = room.getOtherParticipant(user.getId());
+                    convMap.put("otherUser", otherUser);
+                    convMap.put("product", room.getProduct());
+
+                    // Create a pseudo-message object for template compatibility
+                    java.util.Map<String, Object> lastMsgMap = new java.util.HashMap<>();
+                    lastMsgMap.put("content", room.getLastMessage());
+                    lastMsgMap.put("timestamp", room.getLastMessageTime());
+                    lastMsgMap.put("productId", room.getProduct().getId());
+
+                    convMap.put("lastMessage", lastMsgMap);
+                    convMap.put("chatRoomId", room.getId());
+                    return convMap;
+                })
+                .collect(java.util.stream.Collectors.toList());
         model.addAttribute("messageHistory", conversations);
+
+        // Pass tab parameter to model if present
+        String tab = "listings";
+        model.addAttribute("activeTab", tab);
 
         return "user/profile";
     }
