@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layout/main :: layout(~{::div})}">
+
+<body>
+    <div> <!-- WRAPPER DIV TO INCLUDE SCRIPTS IN LAYOUT -->
+        <div class="container mx-auto px-4 py-8 max-w-6xl">
+            <div class="flex flex-col md:flex-row gap-8 min-h-[600px]">
+                <!-- Sidebar: Conversations List -->
+                <div
+                    class="w-full md:w-1/3 bg-white rounded-3xl shadow-xl shadow-blue-900/5 border border-gray-100 overflow-hidden flex flex-col">
+                    <div class="p-6 border-b border-gray-100 flex items-center justify-between">
+                        <h2 class="text-xl font-bold text-gray-900">Your Messages</h2>
+                        <span id="convCount"
+                            class="px-2.5 py-1 bg-blue-50 text-blue-600 text-xs font-bold rounded-full">...</span>
+                    </div>
+                    <div id="conversation-list" class="flex-grow overflow-y-auto divide-y divide-gray-50 max-h-[600px]">
+                        <!-- Polling will populate this -->
+                        <div class="p-8 text-center" id="loadingState">
+                            <div
+                                class="inline-block w-8 h-8 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin mb-3">
+                            </div>
+                            <p class="text-sm text-gray-500 font-medium">Loading conversations...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main: No Chat Selected State -->
+                <div
+                    class="flex-1 bg-white rounded-3xl shadow-xl shadow-blue-900/5 border border-gray-100 flex flex-col items-center justify-center p-12 text-center">
+                    <div
+                        class="w-24 h-24 bg-blue-100/50 rounded-full flex items-center justify-center mb-8 text-blue-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-900 mb-3 tracking-tight">Select a Chat to Begin</h3>
+                    <p class="text-gray-500 max-w-sm text-lg leading-relaxed">Choose a conversation from the sidebar to
+                        view messages or start a new inquiry on a product.</p>
+                    <a href="/products"
+                        class="mt-8 px-8 py-3 bg-gray-900 text-white rounded-2xl font-bold hover:bg-gray-800 transition shadow-lg shadow-gray-200 inline-flex items-center gap-2">
+                        Browse Marketplace
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <script th:inline="javascript">
+            /*<![CDATA[*/
+            const currentUserId = [[${ currentUserId }]];
+
+            async function fetchConversations() {
+                console.log('🔄 Fetching conversations list...');
+                try {
+                    const response = await fetch('/api/chat/conversations');
+                    if (!response.ok) throw new Error('Failed to fetch');
+                    const conversations = await response.json();
+
+                    const listEl = document.getElementById('conversation-list');
+                    const countEl = document.getElementById('convCount');
+                    if (!listEl || !countEl) return;
+
+                    if (conversations.length === 0) {
+                        listEl.innerHTML = `
+                            <div class="p-12 text-center">
+                                <div class="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-300">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                                </div>
+                                <p class="text-sm font-bold text-gray-900 mb-1">No messages yet</p>
+                                <p class="text-xs text-gray-500">New chats will appear here</p>
+                            </div>`;
+                        countEl.textContent = '0';
+                        return;
+                    }
+
+                    countEl.textContent = conversations.length;
+                    listEl.innerHTML = conversations.map(conv => {
+                        const time = new Date(conv.lastMessageAt).toLocaleDateString([], { month: 'short', day: 'numeric' });
+                        return `
+                        <a href="/chat/product/${conv.productId}?otherUserId=${conv.otherUserId}" 
+                           class="group block p-5 hover:bg-blue-50 transition border-l-4 border-transparent hover:border-blue-600 relative">
+                            <div class="flex justify-between items-start mb-1">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-xs">
+                                        ${conv.otherUserName.charAt(0).toUpperCase()}
+                                    </div>
+                                    <h4 class="font-bold text-gray-900 group-hover:text-blue-700 transition truncate">${conv.otherUserName}</h4>
+                                </div>
+                                <span class="text-[10px] font-bold text-gray-400 shrink-0 uppercase tracking-wider">${time}</span>
+                            </div>
+                            <p class="text-[11px] text-blue-600 font-bold mb-2 truncate bg-blue-50/50 w-fit px-2 py-0.5 rounded-md">
+                                ${conv.productTitle}
+                            </p>
+                            <p class="text-sm text-gray-500 truncate leading-relaxed">
+                                ${conv.lastMessage}
+                            </p>
+                            <div class="absolute right-4 bottom-4 opacity-0 group-hover:opacity-100 transition translate-x-2 group-hover:translate-x-0">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="text-blue-600"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                            </div>
+                        </a>
+                        `;
+                    }).join('');
+
+                } catch (error) {
+                    console.error('❌ Error fetching conversations:', error);
+                    const listEl = document.getElementById('conversation-list');
+                    if (listEl) {
+                        listEl.innerHTML = `
+                            <div class="p-8 text-center text-red-500">
+                                <p class="text-sm font-bold">Failed to load chats</p>
+                                <button onclick="fetchConversations()" class="mt-2 text-xs underline">Retry</button>
+                            </div>`;
+                    }
+                }
+            }
+
+            // Initial fetch and poll
+            fetchConversations();
+            setInterval(fetchConversations, 10000);
+            /*]]>*/
+        </script>
+    </div>
+</body>
+
+</html>

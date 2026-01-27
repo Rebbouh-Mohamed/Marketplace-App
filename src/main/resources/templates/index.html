@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layout/main :: layout(~{::div})}">
+
+<body>
+    <!-- Hero Section -->
+    <div
+        class="relative bg-white dark:bg-gray-900 overflow-hidden mb-12 border-b border-gray-100 dark:border-gray-800 transition-colors duration-300">
+        <div
+            class="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&q=80')] bg-cover bg-center opacity-5 dark:opacity-10">
+        </div>
+        <div class="absolute inset-0 bg-gradient-to-b from-transparent to-white dark:to-gray-900"></div>
+
+        <div class="container mx-auto px-4 py-24 relative z-10 text-center">
+            <h1
+                class="text-5xl md:text-7xl font-extrabold text-gray-900 dark:text-white mb-6 tracking-tight leading-tight">
+                Discover <span class="gradient-text">Extraordinary</span> <br> Items Nearby.
+            </h1>
+            <p class="text-xl text-gray-500 dark:text-gray-400 mb-10 max-w-2xl mx-auto font-light">
+                The most trusted marketplace for buyers and sellers. Find great deals on pre-loved items or turn your
+                clutter into cash today.
+            </p>
+            <div class="flex flex-col sm:flex-row justify-center gap-4">
+                <a href="/products"
+                    class="px-8 py-4 bg-blue-600 text-white font-semibold rounded-full shadow-xl shadow-blue-200 dark:shadow-none hover:bg-blue-700 hover:scale-105 transition transform">
+                    Start Exploring
+                </a>
+                <a href="/products/new"
+                    class="px-8 py-4 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 font-semibold rounded-full shadow-lg border border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 hover:scale-105 transition transform">
+                    Sell Something
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="container mx-auto px-4 pb-20">
+        <!-- Categories Section -->
+        <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+            <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16">
+                </path>
+            </svg>
+            Trending Categories
+        </h2>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-16">
+            <div th:each="category : ${categories}" class="group cursor-pointer">
+                <div
+                    class="bg-gradient-to-br from-gray-50 to-white dark:from-gray-800 dark:to-gray-700 border border-gray-100 dark:border-gray-700 p-6 rounded-2xl shadow-sm hover:shadow-md hover:border-blue-200 dark:hover:border-blue-500 transition text-center h-full flex flex-col items-center justify-center">
+                    <div
+                        class="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full flex items-center justify-center mb-3 group-hover:scale-110 transition">
+                        <!-- Icon Placeholder using category slug or default -->
+                        <span class="font-bold text-lg" th:text="${#strings.substring(category.name,0,1)}">C</span>
+                    </div>
+                    <span
+                        class="font-semibold text-gray-800 dark:text-gray-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition"
+                        th:text="${category.name}">Electronics</span>
+                </div>
+            </div>
+            <!-- Dummy Categories if empty for visual fill -->
+            <div th:if="${#lists.isEmpty(categories)}"
+                class="col-span-4 text-center py-8 text-gray-400 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700">
+                No categories found. Run seed data.
+            </div>
+        </div>
+
+        <!-- Fresh Finds Section -->
+        <div class="flex justify-between items-end mb-6">
+            <h2 class="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                </svg>
+                Fresh Finds
+            </h2>
+            <a href="/products" class="text-blue-600 font-medium hover:underline text-sm">View All &rarr;</a>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div th:each="product : ${recentProducts}" class="group">
+                <div
+                    class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition duration-300">
+                    <div class="aspect-w-16 aspect-h-9 bg-gray-200 relative overflow-hidden h-48">
+                        <img th:if="${!product.images.isEmpty()}"
+                            th:src="${product.images[0].imageUrl.startsWith('http') ? product.images[0].imageUrl : '/images/' + product.images[0].imageUrl}"
+                            class="object-cover w-full h-full transform group-hover:scale-105 transition duration-500">
+                        <div th:if="${product.images.isEmpty()}"
+                            class="flex items-center justify-center h-full text-gray-300">No Image</div>
+
+                        <div class="absolute top-3 right-3">
+                            <button th:data-product-id="${product.id}"
+                                th:classappend="${likedProductIds != null && likedProductIds.contains(product.id) ? 'text-red-500' : ''}"
+                                class="like-button w-8 h-8 rounded-full bg-white/90 backdrop-blur text-gray-400 hover:text-red-500 shadow-sm flex items-center justify-center transition">
+                                <svg class="w-4 h-4"
+                                    th:fill="${likedProductIds != null && likedProductIds.contains(product.id) ? 'currentColor' : 'none'}"
+                                    stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z">
+                                    </path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="p-4">
+                        <p class="text-xs text-blue-600 dark:text-blue-400 font-semibold mb-1"
+                            th:text="${product.category.name}">Category
+                        </p>
+                        <h3 class="font-bold text-gray-900 dark:text-white mb-1 truncate">
+                            <a th:href="@{'/products/' + ${product.id}}" th:text="${product.title}"
+                                class="hover:text-blue-600 dark:hover:text-blue-400 transition">Product Title</a>
+                        </h3>
+                        <div class="flex justify-between items-center mt-3">
+                            <span class="text-lg font-bold text-gray-900 dark:text-white"
+                                th:text="${product.price + ' DA'}">250 DA</span>
+                            <span class="text-xs text-gray-400"
+                                th:text="${#temporals.format(product.createdAt, 'MMM d')}">2d ago</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Empty State -->
+            <div th:if="${#lists.isEmpty(recentProducts)}"
+                class="col-span-full py-16 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4">
+                    </path>
+                </svg>
+                <h3 class="mt-2 text-sm font-medium text-gray-900">No products yet</h3>
+                <p class="mt-1 text-sm text-gray-500">Get started by creating a new product.</p>
+                <div class="mt-6">
+                    <a href="/products/new"
+                        class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                        <svg class="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"
+                            fill="currentColor" aria-hidden="true">
+                            <path fill-rule="evenodd"
+                                d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
+                                clip-rule="evenodd" />
+                        </svg>
+                        New Product
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

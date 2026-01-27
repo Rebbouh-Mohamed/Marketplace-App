@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layout/main :: layout(~{::div})}">
+
+<body>
+    <div class="container mx-auto max-w-6xl py-8">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-3xl font-bold text-gray-900">User Management</h1>
+            <a href="/admin" class="text-gray-500 hover:text-gray-900 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="19" y1="12" x2="5" y2="12"></line>
+                    <polyline points="12 19 5 12 12 5"></polyline>
+                </svg>
+                Back to Dashboard
+            </a>
+        </div>
+
+        <!-- Search & Filter -->
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6">
+            <form action="/admin/users" method="get" class="flex gap-4">
+                <div class="flex-grow">
+                    <input type="text" name="search" th:value="${search}" placeholder="Search by username or email..."
+                        class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
+                </div>
+                <button type="submit"
+                    class="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition">
+                    Search
+                </button>
+                <a href="/admin/users"
+                    class="px-6 py-2 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition">
+                    Clear
+                </a>
+            </form>
+        </div>
+
+        <!-- Users Table -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <table class="w-full text-left">
+                <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
+                    <tr>
+                        <th class="px-6 py-3">User</th>
+                        <th class="px-6 py-3">Email</th>
+                        <th class="px-6 py-3">Role</th>
+                        <th class="px-6 py-3">Status</th>
+                        <th class="px-6 py-3">Joined</th>
+                        <th class="px-6 py-3 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    <tr th:each="user : ${users}" class="hover:bg-gray-50 group">
+                        <td class="px-6 py-4 font-medium text-gray-900">
+                            <div class="flex items-center gap-3">
+                                <div
+                                    class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-500">
+                                    <span th:text="${#strings.substring(user.username,0,1).toUpperCase()}">U</span>
+                                </div>
+                                <span th:text="${user.username}">username</span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-gray-500" th:text="${user.email}">email@example.com</td>
+                        <td class="px-6 py-4">
+                            <span class="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs font-semibold"
+                                th:text="${user.role}">ROLE</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="px-2 py-1 rounded-full text-xs font-semibold"
+                                th:classappend="${user.status.name() == 'ACTIVE' ? 'bg-green-100 text-green-700' : (user.status.name() == 'BANNED' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700')}"
+                                th:text="${user.status}">Active</span>
+                        </td>
+                        <td class="px-6 py-4 text-gray-500 text-sm"
+                            th:text="${#temporals.format(user.createdAt, 'MMM d, yyyy')}">Date</td>
+                        <td class="px-6 py-4 text-right">
+                            <div class="flex justify-end gap-2">
+                                <form th:action="@{/admin/users/{id}/status(id=${user.id})}" method="post"
+                                    class="inline">
+                                    <input type="hidden" name="status" value="BANNED">
+                                    <button type="submit"
+                                        class="text-red-600 hover:text-red-900 text-sm font-bold bg-red-50 hover:bg-red-100 px-3 py-1 rounded transition border border-red-200">
+                                        BAN
+                                    </button>
+                                </form>
+                                <form th:action="@{/admin/users/{id}/status(id=${user.id})}" method="post"
+                                    class="inline">
+                                    <input type="hidden" name="status" value="ACTIVE">
+                                    <button type="submit"
+                                        class="text-green-600 hover:text-green-900 text-sm font-bold bg-green-50 hover:bg-green-100 px-3 py-1 rounded transition border border-green-200">
+                                        ACTIVATE
+                                    </button>
+                                </form>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(users.content)}">
+                        <td colspan="6" class="px-6 py-12 text-center text-gray-400">
+                            No users found matching your criteria.
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="mt-6 flex justify-center" th:if="${users.totalPages > 1}">
+            <nav class="flex gap-2">
+                <a th:if="${users.hasPrevious()}" th:href="@{/admin/users(page=${users.number - 1}, search=${search})}"
+                    class="px-4 py-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-700">Previous</a>
+
+                <span class="px-4 py-2 bg-blue-50 text-blue-600 font-medium rounded-lg border border-blue-100"
+                    th:text="${'Page ' + (users.number + 1) + ' of ' + users.totalPages}">Page 1 of 5</span>
+
+                <a th:if="${users.hasNext()}" th:href="@{/admin/users(page=${users.number + 1}, search=${search})}"
+                    class="px-4 py-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-700">Next</a>
+            </nav>
+        </div>
+    </div>
+</body>
+
+</html>

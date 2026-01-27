@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layout/main :: layout(~{::div})}">
+
+<body>
+    <div class="container mx-auto max-w-6xl py-8">
+        <h1 class="text-3xl font-bold text-gray-900 mb-8">Admin Dashboard</h1>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <p class="text-sm text-gray-500 font-medium uppercase">Total Users</p>
+                <p class="text-3xl font-bold text-gray-900 mt-2" th:text="${userCount}">0</p>
+            </div>
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <p class="text-sm text-gray-500 font-medium uppercase">Total Products</p>
+                <p class="text-3xl font-bold text-gray-900 mt-2" th:text="${productCount}">0</p>
+            </div>
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <p class="text-sm text-gray-500 font-medium uppercase">Pending Reviews</p>
+                <p class="text-3xl font-bold text-gray-900 mt-2">0</p>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="p-6 border-b border-gray-100">
+                <h3 class="font-bold text-gray-900">Recent Users</h3>
+            </div>
+            <table class="w-full text-left">
+                <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
+                    <tr>
+                        <th class="px-6 py-3">User</th>
+                        <th class="px-6 py-3">Role</th>
+                        <th class="px-6 py-3">Status</th>
+                        <th class="px-6 py-3">Joined</th>
+                        <th class="px-6 py-3">Action</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    <tr th:each="user : ${recentUsers}" class="hover:bg-gray-50">
+                        <td class="px-6 py-4 font-medium text-gray-900" th:text="${user.username}">john_doe</td>
+                        <td class="px-6 py-4" th:text="${user.role}">BUYER</td>
+                        <td class="px-6 py-4">
+                            <span class="px-2 py-1 rounded-full text-xs font-semibold"
+                                th:classappend="${user.status.name() == 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}"
+                                th:text="${user.status}">Active</span>
+                        </td>
+                        <td class="px-6 py-4" th:text="${#temporals.format(user.createdAt, 'MMM d, yyyy')}">Oct 24, 2023</td>
+                        <td class="px-6 py-4">
+                            <a href="#" class="text-blue-600 hover:text-blue-800 text-sm font-medium mr-2">View</a>
+                        </td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(recentUsers)}">
+                        <td colspan="5" class="px-6 py-4 text-center text-gray-500">No recent users found.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+
+</html>

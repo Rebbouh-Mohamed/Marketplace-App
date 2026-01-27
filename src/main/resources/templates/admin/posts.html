@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layout/main :: layout(~{::div})}">
+
+<body>
+    <div class="container mx-auto max-w-6xl py-8">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-3xl font-bold text-gray-900">Post Management</h1>
+            <a href="/admin" class="text-gray-500 hover:text-gray-900 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="19" y1="12" x2="5" y2="12"></line>
+                    <polyline points="12 19 5 12 12 5"></polyline>
+                </svg>
+                Back to Dashboard
+            </a>
+        </div>
+
+        <!-- Filter -->
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6 font-medium text-sm text-gray-600">
+            <div class="flex gap-4">
+                <a href="/admin/posts" class="px-3 py-1.5 rounded-lg hover:bg-gray-100"
+                    th:classappend="${status == null ? 'bg-blue-50 text-blue-600' : ''}">All Posts</a>
+                <a href="/admin/posts?status=PENDING" class="px-3 py-1.5 rounded-lg hover:bg-gray-100"
+                    th:classappend="${status == 'PENDING' ? 'bg-orange-50 text-orange-600' : ''}">Pending</a>
+                <a href="/admin/posts?status=ACTIVE" class="px-3 py-1.5 rounded-lg hover:bg-gray-100"
+                    th:classappend="${status == 'ACTIVE' ? 'bg-green-50 text-green-600' : ''}">Active</a>
+                <a href="/admin/posts?status=REJECTED" class="px-3 py-1.5 rounded-lg hover:bg-gray-100"
+                    th:classappend="${status == 'REJECTED' ? 'bg-red-50 text-red-600' : ''}">Rejected</a>
+            </div>
+        </div>
+
+        <!-- Posts Table -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <table class="w-full text-left">
+                <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
+                    <tr>
+                        <th class="px-6 py-3">Product</th>
+                        <th class="px-6 py-3">Seller</th>
+                        <th class="px-6 py-3">Category</th>
+                        <th class="px-6 py-3">Price</th>
+                        <th class="px-6 py-3">Status</th>
+                        <th class="px-6 py-3">Date</th>
+                        <th class="px-6 py-3 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    <tr th:each="product : ${products}" class="hover:bg-gray-50 group">
+                        <td class="px-6 py-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0">
+                                    <img th:if="${!product.images.isEmpty()}"
+                                        th:src="${product.images[0].imageUrl.startsWith('http') ? product.images[0].imageUrl : '/images/' + product.images[0].imageUrl}"
+                                        class="w-full h-full object-cover">
+                                    <div th:if="${product.images.isEmpty()}"
+                                        class="w-full h-full flex items-center justify-center text-gray-300 bg-gray-50">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                            stroke-linecap="round" stroke-linejoin="round">
+                                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                                            <polyline points="21 15 16 10 5 21"></polyline>
+                                        </svg>
+                                    </div>
+                                </div>
+                                <div class="min-w-0">
+                                    <p class="text-sm font-medium text-gray-900 truncate max-w-[150px]"
+                                        th:text="${product.title}">MacBook Pro</p>
+                                    <a th:href="@{'/products/' + ${product.id}}" target="_blank"
+                                        class="text-xs text-blue-500 hover:underline">View</a>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-500" th:text="${product.seller.username}">john_doe</td>
+                        <td class="px-6 py-4 text-sm text-gray-500" th:text="${product.category.name}">Electronics</td>
+                        <td class="px-6 py-4 font-medium text-gray-900" th:text="${product.price + ' DA'}">1200 DA</td>
+                        <td class="px-6 py-4">
+                            <span class="px-2 py-1 rounded-full text-xs font-semibold"
+                                th:classappend="${product.status.name() == 'ACTIVE' ? 'bg-green-100 text-green-700' : (product.status.name() == 'PENDING' ? 'bg-orange-100 text-orange-700' : (product.status.name() == 'DELETED' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'))}"
+                                th:text="${product.status}">Active</span>
+                        </td>
+                        <td class="px-6 py-4 text-gray-500 text-xs"
+                            th:text="${#temporals.format(product.createdAt, 'MMM d, HH:mm')}">Oct 24</td>
+                        <td class="px-6 py-4 text-right">
+                            <div class="flex justify-end gap-2">
+                                <!-- Approve Button (if pending/rejected) -->
+                                <form
+                                    th:if="${product.status.name() == 'PENDING' || product.status.name() == 'REJECTED'}"
+                                    th:action="@{/admin/posts/{id}/status(id=${product.id})}" method="post">
+                                    <input type="hidden" name="status" value="ACTIVE">
+                                    <button type="submit"
+                                        class="text-green-600 hover:text-green-900 text-xs font-bold hover:bg-green-50 px-2 py-1 rounded transition border border-green-200">
+                                        Approve
+                                    </button>
+                                </form>
+
+                                <!-- Reject Button (if pending/active) -->
+                                <form th:if="${product.status.name() == 'PENDING' || product.status.name() == 'ACTIVE'}"
+                                    th:action="@{/admin/posts/{id}/status(id=${product.id})}" method="post">
+                                    <input type="hidden" name="status" value="REJECTED">
+                                    <button type="submit"
+                                        class="text-orange-600 hover:text-orange-900 text-xs font-bold hover:bg-orange-50 px-2 py-1 rounded transition border border-orange-200">
+                                        Reject
+                                    </button>
+                                </form>
+
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(products.content)}">
+                        <td colspan="7" class="px-6 py-12 text-center text-gray-400">
+                            No posts found.
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="mt-6 flex justify-center" th:if="${products.totalPages > 1}">
+            <nav class="flex gap-2">
+                <a th:if="${products.hasPrevious()}"
+                    th:href="@{/admin/posts(page=${products.number - 1}, status=${status})}"
+                    class="px-4 py-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-700">Previous</a>
+
+                <span class="px-4 py-2 bg-blue-50 text-blue-600 font-medium rounded-lg border border-blue-100"
+                    th:text="${'Page ' + (products.number + 1) + ' of ' + products.totalPages}">Page 1 of 5</span>
+
+                <a th:if="${products.hasNext()}"
+                    th:href="@{/admin/posts(page=${products.number + 1}, status=${status})}"
+                    class="px-4 py-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-700">Next</a>
+            </nav>
+        </div>
+    </div>
+</body>
+
+</html>
