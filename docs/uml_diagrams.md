@@ -6,28 +6,22 @@ The following diagram illustrates the primary actors and their interactions with
 
 ```mermaid
 usecaseDiagram
-    actor "Guest User" as Guest
-    actor "Registered User" as User
+    actor "Guest" as Guest
+    actor "User" as User
     actor "Seller" as Seller
-    actor "Administrator" as Admin
 
     package "Oudekeniss Marketplace" {
-        usecase "Search Products" as UC1
-        usecase "View Product Details" as UC2
-        usecase "Filter by Category/Price" as UC3
+        usecase "Browse Products" as UC1
+        usecase "Search Items" as UC2
+        usecase "View Details" as UC3
         
-        usecase "Register / Login" as UC4
-        usecase "Manage Profile" as UC5
-        usecase "Send Message" as UC6
-        usecase "Add to Favorites" as UC7
+        usecase "Authenticate" as UC4
+        usecase "Manage Dashboard" as UC5
+        usecase "Real-Time Chat" as UC6
+        usecase "Favorite Item" as UC7
         
-        usecase "Create Listing" as UC8
-        usecase "Upload Photos" as UC9
-        usecase "Edit/Delete Listing" as UC10
-        
-        usecase "Moderate Listings" as UC11
-        usecase "Manage Users" as UC12
-        usecase "View Statistics" as UC13
+        usecase "Post Listing" as UC8
+        usecase "Update Listing" as UC9
     }
 
     Guest --> UC1
@@ -43,229 +37,115 @@ usecaseDiagram
     Seller --|> User
     Seller --> UC8
     Seller --> UC9
-    Seller --> UC10
 
-    Admin --> UC11
-    Admin --> UC12
-    Admin --> UC13
-
-    UC8 ..> UC9 : <<include>>
+    UC8 ..> UC3 : <<leads to>>
 ```
 
 ## 2. Sequence Diagrams
 
-### a) User Registration Sequence
+### a) Real-Time Messaging Sequence (WebSocket)
 ```mermaid
 sequenceDiagram
-    participant Client as Web Browser
-    participant Controller as AuthController
-    participant Service as UserService
-    participant Repo as UserRepository
-    participant DB as User Database
+    participant ClientA as Browser (Buyer)
+    participant WS as WebSocket Handler
+    participant Service as ChatService
+    participant DB as MySQL
+    participant ClientB as Browser (Seller)
 
-    Client->>Controller: POST /register (username, email, password)
-    activate Controller
-    Controller->>Service: createUser(UserDTO)
-    activate Service
+    Note over ClientA, ClientB: Users established STOMP connection
     
-    Service->>Repo: findByEmail(email)
-    activate Repo
-    Repo-->>Service: null (User not found)
-    deactivate Repo
-
-    Service->>Service: encryptPassword(password)
-    Service->>Repo: save(User)
-    activate Repo
-    Repo->>DB: INSERT INTO users...
-    DB-->>Repo: User ID
-    Repo-->>Service: User Entity
-    deactivate Repo
-
-    Service-->>Controller: User Entity
+    ClientA->>WS: SEND /app/chat.send/{roomId} (JSON)
+    activate WS
+    WS->>Service: saveMessage(dto, user)
+    activate Service
+    Service->>DB: INSERT INTO chat_messages...
+    Service->>DB: UPDATE chat_rooms (last_msg, unread)
+    Service-->>WS: MessageEntity
     deactivate Service
-    Controller-->>Client: 200 OK (Redirect to Login)
-    deactivate Controller
+    
+    WS-->>ClientA: BROADCAST /topic/chatroom/{roomId} (JSON)
+    WS-->>ClientB: BROADCAST /topic/chatroom/{roomId} (JSON)
+    deactivate WS
+    
+    Note over ClientB: UI updates instantly without refresh
 ```
 
-### b) Product Listing Creation Sequence
+### b) Product Listing Sequence
 ```mermaid
 sequenceDiagram
     participant User
     participant Controller as ProductController
-    participant PService as ProductService
-    participant IService as ImageService
-    participant S3 as AWS S3 / LocalStack
-    participant Repo as ProductRepository
+    participant Service as ProductService
+    participant S3 as AWS S3
+    participant DB as MySQL
     participant Search as SearchService
 
-    User->>Controller: POST /products/new (Form Data + Images)
+    User->>Controller: POST /products/new
     activate Controller
     
-    Controller->>PService: createProduct(product, images)
-    activate PService
+    Controller->>Service: createProduct(dto, images)
+    activate Service
     
-    PService->>Repo: save(Product) (Initial Save)
-    Repo-->>PService: Product (ID generated)
+    Service->>DB: save(Product)
     
-    loop For Each Image
-        PService->>IService: upload(file)
-        activate IService
-        IService->>S3: PutObject
-        S3-->>IService: S3 Key / URL
-        IService-->>PService: Image URL
-        deactivate IService
+    loop Each Image
+        Service->>S3: upload(file)
+        Service->>DB: save(ProductImage)
     end
     
-    PService->>PService: addImagesToProduct(urls)
-    PService->>Repo: save(Product) (Update with Images)
+    Service->>Search: index(Product)
+    Search->>Search: Update Elasticsearch
     
-    PService->>Search: indexProduct(Product)
-    activate Search
-    Search->>Search: Update Elasticsearch Index
-    Search-->>PService: void
-    deactivate Search
+    Service-->>Controller: Success
+    deactivate Service
     
-    PService-->>Controller: Product
-    deactivate PService
-    
-    Controller-->>User: Redirect to Product Page
+    Controller-->>User: Redirect to details
     deactivate Controller
 ```
 
-### c) Product Search Sequence
+### c) User Authenticated Flow (SSO/Session)
 ```mermaid
 sequenceDiagram
     participant User
-    participant Controller as ProductController
-    participant Service as SearchService
-    participant ES_Repo as ProductSearchRepository
-    participant ES as Elasticsearch
-
-    User->>Controller: GET /products?q=camera&category=tech
-    activate Controller
-    
-    Controller->>Service: searchProductsDetailed(query, filters)
-    activate Service
-    
-    Service->>Service: buildCriteriaQuery()
-    Service->>ES_Repo: search(query)
-    activate ES_Repo
-    ES_Repo->>ES: Query Index
-    ES-->>ES_Repo: SearchHits (Ranked Results)
-    ES_Repo-->>Service: Page<ProductDocument>
-    deactivate ES_Repo
-    
-    Service-->>Controller: Page<ProductDocument>
-    deactivate Service
-    
-    Controller-->>User: Render List View (Thymeleaf)
-    deactivate Controller
-```
-
-### d) Messaging Sequence
-```mermaid
-sequenceDiagram
-    participant Buyer
-    participant Controller as ChatController
-    participant Service as MessageService
-    participant Repo as MessageRepository
-    participant DB as Message Database
-    participant Seller
-
-    Buyer->>Controller: POST /chat/send (content, recipientId)
-    activate Controller
-    
-    Controller->>Service: sendMessage(content, sender, recipient)
-    activate Service
-    
-    Service->>Repo: save(Message)
-    activate Repo
-    Repo->>DB: INSERT INTO messages...
-    DB-->>Repo: success
-    deactivate Repo
-    
-    note right of Service: In a real-time system, this would trigger a WebSocket event
-    
-    Service-->>Controller: Message Entity
-    deactivate Service
-    
-    Controller-->>Buyer: Update Chat View
-    deactivate Controller
-    
-    note over Seller: Seller refreshes or receives notification
-```
-
-### e) User Authentication Sequence
-```mermaid
-sequenceDiagram
-    participant User
-    participant Controller as LoginController
-    participant AuthMgr as AuthenticationManager
-    participant Provider as DaoAuthenticationProvider
+    participant Sec as Spring Security
     participant Service as UserDetailsService
-    participant Repo as UserRepository
-    participant Session as HttpSession
+    participant DB as MySQL
 
-    User->>Controller: POST /login (username, password)
-    activate Controller
-    
-    Controller->>AuthMgr: authenticate(token)
-    activate AuthMgr
-    
-    AuthMgr->>Provider: authenticate()
-    activate Provider
-    
-    Provider->>Service: loadUserByUsername()
+    User->>Sec: Submit Login Form
+    activate Sec
+    Sec->>Service: loadByUsername()
     activate Service
-    Service->>Repo: findByUsername()
-    Repo-->>Service: UserDetails
+    Service->>DB: SELECT from app_users
+    DB-->>Service: UserData
+    Service-->>Sec: UserDetails
     deactivate Service
     
-    Provider->>Provider: checkPassword(hash)
-    Provider-->>AuthMgr: Authentication Object
-    deactivate Provider
-    
-    AuthMgr-->>Controller: Authenticated
-    deactivate AuthMgr
-    
-    Controller->>Session: setSecurityContext(Auth)
-    Controller-->>User: Redirect to Home
-    deactivate Controller
+    Sec->>Sec: Verify Password (BCrypt)
+    Sec-->>User: Create Session (Set-Cookie)
+    deactivate Sec
 ```
 
 ## 3. Activity Diagram
 
-### Product Posting Workflow
-This diagram represents the flow of creating a new product listing.
-
+### Product Engagement Workflow
 ```mermaid
 flowchart TD
-    Start([Start]) --> Login{User Logged In?}
-    Login -- No --> RedirectLogin[Redirect to Login]
-    RedirectLogin --> Stop([Stop])
+    Start([Start]) --> Browse[Browse Product List]
+    Browse --> Click[Click on Product Item]
+    Click --> Details[View Product Details]
     
-    Login -- Yes --> ShowForm[Display 'Sell Product' Form]
+    Details --> Auth{Is Logged In?}
+    Auth -- No --> Login[Navigate to Login]
+    Login --> Details
     
-    ShowForm --> InputData[/User Enters Title, Price, Description, Category/]
-    InputData --> UploadImages[/User Selects Images/]
+    Auth -- Yes --> Choice{User Action?}
+    Choice -- Like --> Fav[Toggle Favorite Status]
+    Choice -- Chat --> OpenChat[Click 'Message Seller']
     
-    UploadImages --> Validate{Validation Pass?}
+    OpenChat --> Room[Enter Real-Time Chat Room]
+    Room --> Msg[Send Message via WebSocket]
+    Msg --> Room
     
-    Validate -- No --> ShowErrors[Display Error Messages]
-    ShowErrors --> InputData
-    
-    Validate -- Yes --> SaveDraft[Save Initial Product to DB]
-    
-    SaveDraft --> ProcessImages[Resize & Compress Images]
-    ProcessImages --> UploadS3[Upload to S3 Storage]
-    
-    UploadS3 --> CheckUpload{Upload Success?}
-    CheckUpload -- No --> HandleError[Log Error & Notify User]
-    
-    CheckUpload -- Yes --> LinkImages[Link Image URLs to Product]
-    LinkImages --> IndexES[Index Product in Elasticsearch]
-    
-    IndexES --> Notify[Show Success Toast]
-    Notify --> RedirectPage[Redirect to New Product Page]
-    RedirectPage --> End([End])
+    Fav --> Details
+    Room --> End([End])
 ```

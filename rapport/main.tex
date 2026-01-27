@@ -1,0 +1,473 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[french]{babel}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{geometry}
+\usepackage{float}
+\usepackage{titlesec}
+
+% TikZ Libraries for UML
+\usetikzlibrary{shapes, arrows.meta, positioning, shadows, fit, calc, backgrounds}
+
+\geometry{margin=2.5cm}
+
+% Code Style
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{estiloJava}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2,
+    frame=single
+}
+\lstset{style=estiloJava}
+
+% Title Format
+\titleformat{\section}
+  {\normalfont\Large\bfseries}{\thesection}{1em}{}
+
+% Custom UML Definitions for TikZ (Simulating tikz-uml for portability)
+\tikzset{
+    actor/.style={
+        circle, fill=white, draw=black, minimum size=0.5cm, inner sep=0pt,
+        append after command={
+            \pgfextra{
+                \draw (\tikzlastnode.south) -- ++(0,-0.5) coordinate (body);
+                \draw (body) -- ++(-0.3,-0.4);
+                \draw (body) -- ++(0.3,-0.4);
+                \draw (body) ++(0,0.3) -- ++(-0.4,0);
+                \draw (body) ++(0,0.3) -- ++(0.4,0);
+            }
+        }
+    },
+    usecase/.style={
+        ellipse, draw=black, fill=blue!10, text width=2.5cm, align=center, minimum height=1cm
+    },
+    class/.style={
+        rectangle, draw=black, fill=yellow!10, text width=4cm,
+        minimum height=0.5cm, node distance=0.5cm, font=\bfseries
+    },
+    attribute/.style={
+        rectangle, draw=black, fill=white, text width=4cm,
+        minimum height=0.5cm, node distance=0cm, align=left, font=\footnotesize
+    },
+    package/.style={
+        rectangle, draw=black, fill=gray!5, minimum width=3cm, minimum height=2cm,
+        inner sep=0.5cm, inner ysep=0.8cm
+    },
+    component/.style={
+        rectangle, draw=black, fill=white, minimum width=3cm, minimum height=1.5cm,
+        append after command={
+            \pgfextra{
+                \draw (\tikzlastnode.west) ++(-0.2, 0.4) rectangle ++(0.4, 0.2);
+                \draw (\tikzlastnode.west) ++(-0.2, -0.2) rectangle ++(0.4, 0.2);
+            }
+        }
+    }
+}
+
+\begin{document}
+
+%--- TITLE PAGE ---
+\begin{titlepage}
+    \begin{center}
+        \Large \textbf{Université Blida 1}\\
+        \large Faculté des Sciences\\
+        Département d'Informatique\\
+        
+        \vspace{2cm}
+        \includegraphics[width=4cm]{example-image-a} % Placeholder for Logo
+        
+        \vspace{1.5cm}
+        {\Huge \textbf{Rapport de Projet Architecture Logicielle}}\\[0.5cm]
+        {\Large \textbf{Plateforme Oudekenis}}\\[0.5cm]
+        
+        \vspace{2cm}
+        \textbf{Réalisé par:}\\
+        Etudiant 1\\
+        Etudiant 2\\
+        
+        \vspace{1cm}
+        \textbf{Module:}\\
+        Architecture Logicielle (Master 2 IL)\\
+        
+        \vspace{2cm}
+        \textbf{Année Universitaire:}\\
+        2025/2026
+        
+    \end{center}
+    \vfill
+    \centering
+    Janvier 2026
+\end{titlepage}
+
+\tableofcontents
+\newpage
+
+%--- 1. INTRODUCTION ---
+\section{Inroduction}
+Ce projet s'inscrit dans le cadre du module d'Architecture Logicielle et vise à concevoir et développer une plateforme de commerce électronique similaire à \textit{Ouedkniss}, leader des annonces en Algérie. L'objectif est de mettre en pratique les concepts architecturaux modernes tels que le \textbf{Modular Monolith} (via Spring Modulith), l'intégration de moteurs de recherche avancés, et la communication temps réel.
+
+\subsection{Analyse de l'existant (Ouedkniss)}
+Le site Ouedkniss est une référence, mais il présente certaines limitations technologiques perçues :
+\begin{itemize}
+    \item \textbf{Navigation} : Parfois complexe avec une hiérarchie de catégories profonde.
+    \item \textbf{Temps Réel} : La messagerie manque souvent d'instantanéité fluide.
+    \item \textbf{Recherche} : La pertinence des résultats peut être améliorée (flou/typos).
+\end{itemize}
+
+\subsection{Notre Solution : Oudekenis}
+Notre solution \textit{Oudekenis} propose :
+\begin{itemize}
+    \item Une architecture **Spring Modulith** pour une maintenabilité accrue.
+    \item Un moteur de recherche **Elasticsearch** pour une indexation rapide et tolérante aux fautes.
+    \item Une messagerie instantanée basée sur **WebSocket (STOMP)** pour relier acheteurs et vendeurs en temps réel.
+    \item Une interface réactive avec **Thymeleaf** et **Alpine.js**.
+\end{itemize}
+
+\newpage
+
+%--- 2. ANALYSE DES BESOINS (USE CASE) ---
+\section{Analyse des Cas d'Utilisation}
+
+Le diagramme ci-dessous illustre les interactions des principaux acteurs avec le système.
+
+\begin{center}
+\begin{tikzpicture}[scale=0.8, every node/.style={transform shape}]
+    % Actors
+    \node[actor] (Guest) at (0, 8) {}; \node[below] at (Guest) {Visiteur};
+    \node[actor] (User) at (0, 4) {}; \node[below] at (User) {Utilisateur};
+    \node[actor] (Seller) at (0, 0) {}; \node[below] at (Seller) {Vendeur};
+
+    % System Box
+    \draw (3, -2) rectangle (12, 10);
+    \node[anchor=north] at (7.5, 10) {\textbf{Système Oudekenis}};
+
+    % Use Cases
+    \node[usecase] (Search) at (5, 9) {Rechercher Produit};
+    \node[usecase] (View) at (5, 7.5) {Consulter Détail};
+    \node[usecase] (Auth) at (7, 6) {S'authentifier};
+    
+    \node[usecase] (Chat) at (9, 4.5) {Chat Temps-Réel};
+    \node[usecase] (Profile) at (9, 3) {Gérer Profil};
+    \node[usecase] (Fav) at (5, 4.5) {Ajouter Favoris};
+    
+    \node[usecase] (Post) at (6, 1) {Publier Annonce};
+    \node[usecase] (Update) at (6, -1) {Modifier Annonce};
+
+    % Relationships
+    \draw (Guest) -- (Search);
+    \draw (Guest) -- (View);
+    \draw (Guest) -- (Auth);
+
+    % Inheritance
+    \draw[-{Triangle[open]}] (User) -- (Guest);
+    \draw[-{Triangle[open]}] (Seller) -- (User);
+
+    % User Relations
+    \draw (User) -- (Chat);
+    \draw (User) -- (Profile);
+    \draw (User) -- (Fav);
+
+    % Seller Relations
+    \draw (Seller) -- (Post);
+    \draw (Seller) -- (Update);
+    \draw[dashed, ->] (Post) -- node[right, font=\tiny] {<<include>>} (View);
+
+\end{tikzpicture}
+\end{center}
+
+\subsection{Acteurs et Rôles}
+\begin{itemize}
+    \item \textbf{Visiteur} : Peut rechercher des produits via Elasticsearch et consulter les détails.
+    \item \textbf{Utilisateur (Connecté)} : Peut gérer son profil, ajouter des favoris et discuter avec les vendeurs via WebSocket.
+    \item \textbf{Vendeur} : Possède les droits pour créer, modifier des annonces et uploader des images (S3).
+\end{itemize}
+
+\newpage
+
+%--- 3. SYSTEM SEQUENCE DIAGRAMS ---
+\section{Diagrammes de Séquence}
+
+\subsection{Scénario : Messagerie Temps Réel (WebSocket)}
+Ce diagramme détaille le flux de communication instantanée implémenté.
+
+\begin{center}
+\begin{tikzpicture}
+    % Lifelines
+    \node[draw, fill=gray!10] (Buyer) at (0,0) {Acheteur (Nav)};
+    \node[draw, fill=gray!10] (Server) at (4,0) {Serveur (Spring)};
+    \node[draw, fill=gray!10] (DB) at (8,0) {Base de Données};
+    \node[draw, fill=gray!10] (Seller) at (12,0) {Vendeur (Nav)};
+
+    \draw[thick] (Buyer) -- (0,-8);
+    \draw[thick] (Server) -- (4,-8);
+    \draw[thick] (DB) -- (8,-8);
+    \draw[thick] (Seller) -- (12,-8);
+
+    % Sequence Interaction
+    
+    % Step 1
+    \node[anchor=west, font=\scriptsize] at (0.1,-1) {1. Connexion STOMP (/ws)};
+    \draw[->] (0,-1) -- (4,-1);
+    \draw[dashed, ->] (12,-1.2) -- (4,-1.2) node[midway, above, font=\tiny] {Connexion seller};
+
+    % Step 2
+    \node[anchor=west, font=\scriptsize] at (0.1,-2) {2. Envoi Message (/app/chat.send)};
+    \draw[->] (0,-2) -- (4,-2);
+
+    % Step 3
+    
+    \draw (4,-2.5) -- (8,-2.5) node[midway, above, font=\tiny] {3. saveMessage()};
+    \draw (8,-3) -- (4,-3) node[midway, above, font=\tiny] {MessageSaved};
+
+    % Step 4
+    \node[anchor=west, font=\scriptsize, align=left] at (4.1,-4) {4. Broadcast Topic\\(/topic/chatroom/1)};
+    \draw[->] (4,-4.5) -- (0,-4.5);
+    \draw[->] (4,-4.5) -- (12,-4.5);
+
+    % Step 5
+    \node[font=\scriptsize, fill=white, draw] at (6,-6) {Mise à jour UI instantanée via JS};
+
+\end{tikzpicture}
+\end{center}
+
+\subsection{Scénario : Création d'Annonce}
+Synchronisation entre la base relationnelle et l'index de recherche.
+
+\begin{center}
+\begin{tikzpicture}
+    % Lifelines
+    \node[draw, fill=gray!10] (User) at (0,0) {Utilisateur};
+    \node[draw, fill=gray!10] (Ctrl) at (3,0) {ProductController};
+    \node[draw, fill=gray!10] (Svc) at (6,0) {ProductService};
+    \node[draw, fill=gray!10] (Repo) at (9,0) {MySQL};
+    \node[draw, fill=gray!10] (ES) at (12,0) {Elasticsearch};
+
+    \draw[thick] (User) -- (0,-7);
+    \draw[thick] (Ctrl) -- (3,-7);
+    \draw[thick] (Svc) -- (6,-7);
+    \draw[thick] (Repo) -- (9,-7);
+    \draw[thick] (ES) -- (12,-7);
+
+    % Scenario
+    \draw[->] (0,-1) -- (3,-1) node[midway, above, font=\tiny] {POST /products/new};
+    \draw[->] (3,-1.5) -- (6,-1.5) node[midway, above, font=\tiny] {create()};
+    
+    \draw[->] (6,-2.5) -- (9,-2.5) node[midway, above, font=\tiny] {save(Product)};
+    \draw[dashed, ->] (9,-3) -- (6,-3);
+    
+    \draw[->] (6,-4) -- (12,-4) node[midway, above, font=\tiny] {index(ProductDocument)};
+    \draw[dashed, ->] (12,-4.5) -- (6,-4.5);
+    
+    \draw[dashed, ->] (6,-5.5) -- (3,-5.5);
+    \draw[dashed, ->] (3,-6) -- (0,-6) node[midway, above, font=\tiny] {Redirection};
+
+\end{tikzpicture}
+\end{center}
+
+\newpage
+
+%--- 4. CLASS DIAGRAM ---
+\section{Diagramme de Classe}
+
+Le modèle de domaine reflète la structure relationnelle implémentée avec JPA.
+
+\begin{center}
+\begin{tikzpicture}[scale=0.7, transform shape]
+    % Classes
+    \node[class] (User) {
+        \textbf{User}
+        \nodepart{second}
+        + id: Long\\
+        + username: String\\
+        + email: String\\
+        + password: String\\
+        + role: Role
+    };
+
+    \node[class, right=of User, xshift=2cm] (Product) {
+        \textbf{Product}
+        \nodepart{second}
+        + id: Long\\
+        + title: String\\
+        + price: BigDecimal\\
+        + status: Status\\
+        + location: String
+    };
+
+    \node[class, below=of Product, yshift=-1cm] (Image) {
+        \textbf{ProductImage}
+        \nodepart{second}
+        + id: Long\\
+        + imageUrl: String\\
+        + isPrimary: Boolean
+    };
+
+    \node[class, above=of Product, yshift=1cm] (Category) {
+        \textbf{Category}
+        \nodepart{second}
+        + id: Long\\
+        + name: String\\
+        + icon: String
+    };
+
+    \node[class, below=of User, yshift=-1cm] (ChatRoom) {
+        \textbf{ChatRoom}
+        \nodepart{second}
+        + id: Long\\
+        + lastMessage: String\\
+        + unreadCount: Integer
+    };
+
+    \node[class, below=of ChatRoom, yshift=-1cm] (Message) {
+        \textbf{ChatMessage}
+        \nodepart{second}
+        + id: Long\\
+        + content: Text\\
+        + timestamp: DateTime
+    };
+
+    % Relations
+    \draw[-{Diamond}] (User) -- node[above] {1} node[below] {*} (Product);
+    \draw[-{Diamond}] (Category) -- node[right] {1} (Product);
+    \draw[-{Diamond[fill=black]}] (Product) -- node[right] {1} node[left] {*} (Image);
+    
+    \draw[->] (ChatRoom) -- node[right] {concerne} (Product);
+    \draw[->] (ChatRoom) -- node[left] {acheteur} (User);
+    \draw[-{Diamond[fill=black]}] (ChatRoom) -- (Message);
+    \draw[->] (Message) -- node[left] {expéditeur} (User);
+
+\end{tikzpicture}
+\end{center}
+
+\newpage
+
+%--- 5. ARCHITECTURE ---
+\section{Architecture Logicielle}
+
+\subsection{Architecture en Couches}
+L'application respecte strictement le pattern \textbf{Layered Architecture} :
+\begin{itemize}
+    \item \textbf{Presentation Layer} : Thymeleaf (SSR) pour le web, JSON pour l'API Mobile.
+    \item \textbf{Business Layer} : Services Spring transactionnels encapsulant la logique métier (`@Service`).
+    \item \textbf{Persistence Layer} : Interfaces `JpaRepository` pour MySQL et `ElasticsearchRepository`.
+    \item \textbf{Database Layer} : MySQL 8.0 (Données relationnelles) et Elasticsearch (Indexation).
+\end{itemize}
+
+\subsection{Diagramme de Paquetages (Spring Modulith)}
+L'architecture modulaire permet de découpler les fonctionnalités fonctionnelles (User, Product, Chat, Search).
+
+\begin{center}
+\begin{tikzpicture}
+    % Packages
+    \node[package] (UserPkg) at (0, 0) {\textbf{com.marketplace.user}};
+    \node[package] (ProdPkg) at (5, 0) {\textbf{com.marketplace.product}};
+    \node[package] (ChatPkg) at (0, -4) {\textbf{com.marketplace.chat}};
+    \node[package] (SearchPkg) at (5, -4) {\textbf{com.marketplace.search}};
+    
+    % Dependencies
+    \draw[->, thick, dashed] (ProdPkg) -- node[midway, above] {depend} (UserPkg);
+    \draw[->, thick, dashed] (ChatPkg) -- node[midway, left] {depend} (UserPkg);
+    \draw[->, thick, dashed] (ChatPkg) -- (ProdPkg);
+    \draw[->, thick, dashed] (ProdPkg) -- (SearchPkg);
+
+    % Description
+    \node[align=left, font=\small] at (10, -2) {
+        \textbf{User} : Auth, Profils.\\
+        \textbf{Product} : Annonces, Images.\\
+        \textbf{Chat} : WebSocket, Salles.\\
+        \textbf{Search} : Indexation ES.
+    };
+\end{tikzpicture}
+\end{center}
+
+\section{Architecture de Déploiement}
+
+Le déploiement utilise Docker pour conteneuriser chaque service.
+
+\begin{center}
+\begin{tikzpicture}
+    % Nodes
+    \node[draw, cube, minimum size=2cm, fill=white] (App) at (0,0) {Spring Boot\\(Port 8080)};
+    \node[draw, cube, minimum size=1.5cm, fill=blue!10] (MySQL) at (5,2) {MySQL\\(Port 3306)};
+    \node[draw, cube, minimum size=1.5cm, fill=yellow!10] (ES) at (5,0) {Elasticsearch\\(Port 9200)};
+    \node[draw, cube, minimum size=1.5cm, fill=green!10] (S3) at (5,-2) {LocalStack S3\\(Port 4566)};
+    
+    \node[draw, cloud, minimum width=3cm, minimum height=1.5cm, fill=gray!5] (Client) at (-5,0) {Navigateur /\\Mobile};
+
+    % Connections
+    \draw[->, thick] (Client) -- node[above] {HTTP/WS} (App);
+    \draw[->, thick] (App) -- node[above] {JDBC} (MySQL);
+    \draw[->, thick] (App) -- node[above] {REST} (ES);
+    \draw[->, thick] (App) -- node[below] {AWS SDK} (S3);
+
+    % Boundary
+    \draw[dashed, red] (-2, -3.5) rectangle (7, 3.5);
+    \node[red] at (2.5, 3.7) {Docker Host};
+
+\end{tikzpicture}
+\end{center}
+
+\newpage
+
+%--- 7. IMPLEMENTATION & 8. TESTING ---
+\section{Détails d'Implémentation}
+
+\subsection{Stack Technologique}
+\begin{itemize}
+    \item \textbf{Backend} : Java 17, Spring Boot 3.3.0.
+    \item \textbf{Frontend} : Thymeleaf, TailwindCSS, Alpine.js (pour la réactivité du Chat).
+    \item \textbf{Données} : MySQL, Elasticsearch, AWS S3 (Images).
+    \item \textbf{Protocole} : STOMP over WebSocket pour la messagerie instantanée.
+\end{itemize}
+
+\subsection{Fonctionnalités Clés Implémentées}
+\begin{enumerate}
+    \item \textbf{Messagerie Temps Réel} : Système complet de chat (Salles, Messages, Notifications non-lues) sans rechargement de page.
+    \item \textbf{Recherche Hybride} : Utilisation d'Elasticsearch pour des recherches full-text performantes sur les produits.
+    \item \textbf{Gestion des Images} : Upload multiple et stockage optimisé sur S3.
+    \item \textbf{Authentification} : Sécurisation complète avec Spring Security et BCrypt.
+\end{enumerate}
+
+\section{Tests et Qualité}
+Une stratégie de test pyramide a été adoptée :
+\begin{itemize}
+    \item \textbf{Tests Unitaires} : Utilisation de JUnit et Mockito pour isoler la logique métier (`ChatRoomService`, `ProductService`).
+    \item \textbf{Tests d'Intégration} : Tests `@SpringBootTest` avec base de données H2 en mémoire pour valider les flux JPA et REST.
+    \item \textbf{Vérification Manuelle (E2E)} : Scénarios complets testés via navigateur (Flux Achat/Vente, Chat temps réel) validés par captures d'écran et enregistrements.
+\end{itemize}
+
+\section{Conclusion}
+Le projet \textit{Oudekenis} a permis de réaliser une plateforme robuste et évolutive. L'adoption de l'architecture \textbf{Spring Modulith} et des \textbf{WebSockets} démontre une maîtrise des technologies modernes du web.
+\\
+\\
+\textbf{Perspectives d'amélioration :}
+\begin{itemize}
+    \item Ajout d'une application mobile Flutter native (API REST déjà prête).
+    \item Mise en place d'un cache Redis pour les sessions distribuées.
+    \item Intégration de paiement en ligne.
+\end{itemize}
+
+\end{document}

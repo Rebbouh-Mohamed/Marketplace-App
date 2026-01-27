@@ -30,26 +30,16 @@ classDiagram
         USED_FAIR
     }
 
-    class UserStatus {
-        <<enumeration>>
-        ACTIVE
-        INACTIVE
-        BANNED
-    }
-
     %% Domain Entities
     class User {
         +Long id
         +String username
         +String email
-        +String passwordHash
+        +String password
         +Role role
-        +String firstName
-        +String lastName
         +String phoneNumber
         +String address
         +String avatarUrl
-        +UserStatus status
         +LocalDateTime createdAt
         +LocalDateTime updatedAt
     }
@@ -79,13 +69,22 @@ classDiagram
         +Long id
         +String imageUrl
         +Integer displayOrder
+        +Boolean isPrimary
+    }
+
+    class ChatRoom {
+        +Long id
+        +String lastMessage
+        +LocalDateTime lastMessageTime
+        +Integer unreadCountBuyer
+        +Integer unreadCountSeller
     }
 
     class ChatMessage {
         +Long id
-        +String sender
         +String content
         +LocalDateTime timestamp
+        +Boolean isRead
     }
 
     class Tag {
@@ -93,22 +92,22 @@ classDiagram
         +String name
     }
 
-    class ProductLike {
-        +Long id
-        +LocalDateTime createdAt
-    }
-
     %% Relationships
-    User "1" --> "*" Product : owns/sells
-    Product "*" --> "1" Category : belongs to
-    Product "1" *-- "*" ProductImage : has
-    Product "*" -- "*" Tag : tagged with
+    User "1" --> "*" Product : owns
+    Product "*" --> "1" Category : category
+    Product "1" *-- "*" ProductImage : images
+    Product "*" -- "*" Tag : tags
     User "1" -- "*" ProductLike : likes
-    ProductLike "*" -- "1" Product : targets
     
+    %% Chat Relationships
+    ChatRoom "*" --> "1" Product : product
+    ChatRoom "*" --> "1" User : buyer
+    ChatRoom "*" --> "1" User : seller
+    ChatMessage "*" --> "1" ChatRoom : chatRoom
+    ChatMessage "*" --> "1" User : sender
+
     %% Enum Associations
     User ..> Role
-    User ..> UserStatus
     Product ..> ProductStatus
     Product ..> Condition
 ```
